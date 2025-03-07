@@ -1,7 +1,5 @@
-import { config } from 'dotenv';
-
-// Load environment variables from .env file
-config();
+// Use native Node.js environment variables support
+// No need for dotenv as we're using the --env-file flag in the dev script
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
