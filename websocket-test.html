@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Scheduler WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .logs {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Process Scheduler WebSocket Test</h1>
+        
+        <div class="card">
+            <h2>Connection</h2>
+            <div>
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" value="http://localhost:3000" style="width: 300px;">
+                <button id="connectBtn">Connect</button>
+                <button id="disconnectBtn" disabled>Disconnect</button>
+            </div>
+            <div id="connectionStatus">Not connected</div>
+        </div>
+        
+        <div class="card">
+            <h2>Start Simulation</h2>
+            <div>
+                <label for="algorithm">Algorithm:</label>
+                <select id="algorithm">
+                    <option value="FCFS">First-Come, First-Served (FCFS)</option>
+                    <option value="SJF">Shortest Job First (SJF)</option>
+                    <option value="SRTF">Shortest Remaining Time First (SRTF)</option>
+                    <option value="RR">Round Robin (RR)</option>
+                    <option value="PRIORITY">Priority (non-preemptive)</option>
+                    <option value="PRIORITY_P">Priority (preemptive)</option>
+                </select>
+            </div>
+            <div>
+                <label for="stepInterval">Step Interval (ms):</label>
+                <input type="number" id="stepInterval" value="1000" min="100" max="5000">
+            </div>
+            <div>
+                <label for="processes">Processes (JSON):</label>
+                <textarea id="processes" rows="10" style="width: 100%;">[
+  {"name": "P1", "arrivalTime": 0, "burstTime": 5},
+  {"name": "P2", "arrivalTime": 2, "burstTime": 3},
+  {"name": "P3", "arrivalTime": 4, "burstTime": 1}
+]</textarea>
+            </div>
+            <button id="startBtn" disabled>Start Simulation</button>
+            <button id="pauseBtn" disabled>Pause</button>
+            <button id="resumeBtn" disabled>Resume</button>
+            <button id="stepBtn" disabled>Step</button>
+            <button id="resetBtn" disabled>Reset</button>
+        </div>
+        
+        <div class="card">
+            <h2>Simulation Status</h2>
+            <div id="simulationStatus">Not started</div>
+            <div id="simulationTime">Time: 0</div>
+            <div>
+                <h3>Processes</h3>
+                <div id="processesStatus"></div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>Event Logs</h2>
+            <div class="logs" id="logs"></div>
+            <button id="clearLogsBtn">Clear Logs</button>
+        </div>
+    </div>
+    
+    <script>
+        let socket = null;
+        
+        // DOM Elements
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const serverUrlInput = document.getElementById('serverUrl');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const stepBtn = document.getElementById('stepBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const algorithmSelect = document.getElementById('algorithm');
+        const stepIntervalInput = document.getElementById('stepInterval');
+        const processesTextarea = document.getElementById('processes');
+        const simulationStatus = document.getElementById('simulationStatus');
+        const simulationTime = document.getElementById('simulationTime');
+        const processesStatus = document.getElementById('processesStatus');
+        const logs = document.getElementById('logs');
+        const clearLogsBtn = document.getElementById('clearLogsBtn');
+        
+        // Connect to WebSocket server
+        connectBtn.addEventListener('click', () => {
+            const serverUrl = serverUrlInput.value;
+            try {
+                socket = io(serverUrl);
+                
+                socket.on('connect', () => {
+                    log('Connected to server');
+                    connectionStatus.textContent = 'Connected';
+                    connectionStatus.style.color = 'green';
+                    connectBtn.disabled = true;
+                    disconnectBtn.disabled = false;
+                    startBtn.disabled = false;
+                });
+                
+                socket.on('disconnect', () => {
+                    log('Disconnected from server');
+                    connectionStatus.textContent = 'Disconnected';
+                    connectionStatus.style.color = 'red';
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+                    startBtn.disabled = true;
+                    pauseBtn.disabled = true;
+                    resumeBtn.disabled = true;
+                    stepBtn.disabled = true;
+                    resetBtn.disabled = true;
+                });
+                
+                // Event: Simulation Step
+                socket.on('simulation-step', (data) => {
+                    log('Received simulation step update');
+                    simulationTime.textContent = `Time: ${data.currentTime}`;
+                    updateProcessesDisplay(data.processes);
+                });
+                
+                // Event: Simulation State
+                socket.on('simulation-state', (data) => {
+                    log(`Simulation state changed: ${data.state}`);
+                    simulationStatus.textContent = `State: ${data.state}`;
+                    
+                    if (data.state === 'paused') {
+                        pauseBtn.disabled = true;
+                        resumeBtn.disabled = false;
+                        stepBtn.disabled = false;
+                    } else if (data.state === 'running') {
+                        pauseBtn.disabled = false;
+                        resumeBtn.disabled = true;
+                        stepBtn.disabled = true;
+                    } else if (data.state === 'reset') {
+                        pauseBtn.disabled = true;
+                        resumeBtn.disabled = true;
+                        stepBtn.disabled = true;
+                        resetBtn.disabled = true;
+                        startBtn.disabled = false;
+                        simulationTime.textContent = 'Time: 0';
+                        processesStatus.innerHTML = '';
+                    }
+                });
+                
+                // Event: Simulation Completed
+                socket.on('simulation-completed', (data) => {
+                    log('Simulation completed');
+                    simulationStatus.textContent = 'Completed';
+                    pauseBtn.disabled = true;
+                    resumeBtn.disabled = true;
+                    stepBtn.disabled = true;
+                    resetBtn.disabled = false;
+                    startBtn.disabled = false;
+                    
+                    // Display final results
+                    const resultText = JSON.stringify(data.results, null, 2);
+                    log(`Final results: ${resultText}`);
+                });
+                
+                // Event: Simulation Error
+                socket.on('simulation-error', (data) => {
+                    log(`Error: ${data.message}`);
+                    simulationStatus.textContent = 'Error';
+                    simulationStatus.style.color = 'red';
+                });
+                
+            } catch (error) {
+                log(`Connection error: ${error.message}`);
+                connectionStatus.textContent = 'Connection error';
+                connectionStatus.style.color = 'red';
+            }
+        });
+        
+        // Disconnect from server
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        });
+        
+        // Start simulation
+        startBtn.addEventListener('click', () => {
+            const algorithm = algorithmSelect.value;
+            const stepInterval = parseInt(stepIntervalInput.value);
+            let processes;
+            
+            try {
+                processes = JSON.parse(processesTextarea.value);
+            } catch (error) {
+                log(`Invalid JSON: ${error.message}`);
+                return;
+            }
+            
+            socket.emit('start-simulation', {
+                algorithm,
+                processes,
+                stepInterval,
+            });
+            
+            log(`Started ${algorithm} simulation`);
+            simulationStatus.textContent = 'Running';
+            simulationStatus.style.color = 'blue';
+            
+            startBtn.disabled = true;
+            pauseBtn.disabled = false;
+            resumeBtn.disabled = true;
+            stepBtn.disabled = true;
+            resetBtn.disabled = false;
+        });
+        
+        // Pause simulation
+        pauseBtn.addEventListener('click', () => {
+            socket.emit('pause-simulation');
+            log('Paused simulation');
+        });
+        
+        // Resume simulation
+        resumeBtn.addEventListener('click', () => {
+            socket.emit('resume-simulation');
+            log('Resumed simulation');
+        });
+        
+        // Step simulation
+        stepBtn.addEventListener('click', () => {
+            socket.emit('step-simulation');
+            log('Stepping simulation');
+        });
+        
+        // Reset simulation
+        resetBtn.addEventListener('click', () => {
+            socket.emit('reset-simulation');
+            log('Reset simulation');
+        });
+        
+        // Clear logs
+        clearLogsBtn.addEventListener('click', () => {
+            logs.innerHTML = '';
+        });
+        
+        // Helper functions
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logs.appendChild(logEntry);
+            logs.scrollTop = logs.scrollHeight;
+        }
+        
+        function updateProcessesDisplay(processes) {
+            processesStatus.innerHTML = '';
+            
+            processes.forEach(process => {
+                const processEl = document.createElement('div');
+                processEl.style.marginBottom = '10px';
+                processEl.style.padding = '5px';
+                processEl.style.border = '1px solid #ddd';
+                processEl.style.borderRadius = '4px';
+                
+                // Color based on state
+                if (process.state === 'RUNNING') {
+                    processEl.style.backgroundColor = '#d4edda';
+                } else if (process.state === 'READY') {
+                    processEl.style.backgroundColor = '#fff3cd';
+                } else if (process.state === 'TERMINATED') {
+                    processEl.style.backgroundColor = '#f8d7da';
+                }
+                
+                processEl.innerHTML = `
+                    <strong>${process.name}</strong> (${process.state})<br>
+                    Arrival: ${process.arrivalTime} | Burst: ${process.burstTime} | Priority: ${process.priority}<br>
+                    Remaining: ${process.remainingTime} | Waiting: ${process.waitingTime}
+                `;
+                
+                processesStatus.appendChild(processEl);
+            });
+        }
+    </script>
+</body>
+</html> 
