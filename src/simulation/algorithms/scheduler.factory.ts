@@ -2,6 +2,11 @@ import { Process } from '../models/process.model.js';
 import { SchedulerInterface } from './scheduler.interface.js';
 import { FCFSScheduler } from './non_expulsives/fcfs.js';
 import { SJFScheduler } from './non_expulsives/sjf.js';
+import { RandomScheduler } from './non_expulsives/random.js';
+import { PriorityScheduler } from './non_expulsives/priority.js';
+import { PriorityPreemptiveScheduler } from './explusive/priority_p.js';
+import { RoundRobinScheduler } from './explusive/round_robin.js';
+import { SRTFScheduler } from './explusive/srtf.js';
 
 /**
  * Enum defining the available scheduling algorithm types
@@ -12,7 +17,8 @@ export enum SchedulerType {
   SRTF = 'SRTF',           // Shortest Remaining Time First (preemptive)
   RR = 'RR',               // Round Robin
   PRIORITY = 'PRIORITY',   // Priority Scheduling (non-preemptive)
-  PRIORITY_P = 'PRIORITY_P' // Priority Scheduling (preemptive)
+  PRIORITY_P = 'PRIORITY_P', // Priority Scheduling (preemptive)
+  RANDOM = 'RANDOM'        // Random Selection (Selección aleatoria)
 }
 
 /**
@@ -46,11 +52,22 @@ export class SchedulerFactory {
       case SchedulerType.SJF:
         return new SJFScheduler(processes);
       
-      // Other scheduler types will be implemented later
-      case SchedulerType.SRTF:
-      case SchedulerType.RR:
+      case SchedulerType.RANDOM:
+        return new RandomScheduler(processes);
+      
       case SchedulerType.PRIORITY:
+        return new PriorityScheduler(processes);
+        
       case SchedulerType.PRIORITY_P:
+        return new PriorityPreemptiveScheduler(processes);
+        
+      case SchedulerType.RR:
+        const timeQuantum = config?.timeQuantum || 2;
+        return new RoundRobinScheduler(processes, timeQuantum);
+        
+      case SchedulerType.SRTF:
+        return new SRTFScheduler(processes);
+      
       default:
         // For now, fallback to FCFS for unimplemented schedulers
         console.warn(`Scheduler type ${type} not implemented yet. Using FCFS instead.`);

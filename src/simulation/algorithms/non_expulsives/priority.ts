@@ -3,34 +3,34 @@ import { BaseScheduler } from '../base-scheduler.js';
 import logger from '../../../utils/logger.js';
 
 /**
- * Shortest Job First (SJF) scheduling algorithm
- * Non-preemptive algorithm that selects the waiting process with the smallest burst time
- * Also known as Shortest Process Next (SPN)
+ * Priority Scheduling algorithm (non-preemptive)
+ * Non-preemptive algorithm that selects the process with the highest priority (lowest priority value)
+ * Also known as "Planificación basada en prioridades"
  */
-export class SJFScheduler extends BaseScheduler {
+export class PriorityScheduler extends BaseScheduler {
   /**
-   * Create a new SJF scheduler
+   * Create a new Priority scheduler
    * @param processes Array of processes to schedule
    */
   constructor(processes: Process[]) {
-    super([...processes], 'SJF');
+    super([...processes], 'Priority');
   }
 
   /**
-   * Sort the ready queue by burst time (shortest first)
-   * If two processes have the same burst time, the one that arrived earlier is selected
+   * Sort the ready queue by priority (lowest value first)
+   * If two processes have the same priority, the one that arrived earlier is selected (FCFS as tie-breaker)
    */
   private sortReadyQueue(): void {
     this.readyQueue.sort((a, b) => {
-      // First sort by remaining time
-      const remainingTimeDiff = a.remainingTime - b.remainingTime;
+      // First sort by priority (lower value = higher priority)
+      const priorityDiff = a.priority - b.priority;
       
-      // If remaining times are equal, sort by arrival time
-      if (remainingTimeDiff === 0) {
+      // If priorities are equal, sort by arrival time
+      if (priorityDiff === 0) {
         return a.arrivalTime - b.arrivalTime;
       }
       
-      return remainingTimeDiff;
+      return priorityDiff;
     });
   }
 
@@ -45,16 +45,16 @@ export class SJFScheduler extends BaseScheduler {
     // Check for newly arrived processes
     this.checkArrivals();
     
-    // If no current process is running, get the one with shortest burst time
+    // If no current process is running, get the one with highest priority
     if (!this.currentProcess && this.readyQueue.length > 0) {
-      // Sort ready queue by burst time (or remaining time for partially executed processes)
+      // Sort ready queue by priority
       this.sortReadyQueue();
       
-      // Select the process with shortest burst time
+      // Select the process with highest priority (lowest priority value)
       this.currentProcess = this.readyQueue.shift() || null;
       if (this.currentProcess) {
         this.currentProcess.updateState(ProcessState.RUNNING);
-        logger.debug(`Process ${this.currentProcess.name} (burst time: ${this.currentProcess.remainingTime}) started execution at time ${this.time}`);
+        logger.debug(`Process ${this.currentProcess.name} (priority: ${this.currentProcess.priority}) started execution at time ${this.time}`);
       }
     }
     
@@ -73,15 +73,15 @@ export class SJFScheduler extends BaseScheduler {
         this.completed.push(this.currentProcess);
         this.currentProcess = null;
         
-        // Get the next process from the ready queue (will be sorted in next tick)
+        // Get the next process from the ready queue
         if (this.readyQueue.length > 0) {
-          // Sort ready queue by burst time
+          // Sort ready queue by priority
           this.sortReadyQueue();
           
           this.currentProcess = this.readyQueue.shift() || null;
           if (this.currentProcess) {
             this.currentProcess.updateState(ProcessState.RUNNING);
-            logger.debug(`Process ${this.currentProcess.name} (burst time: ${this.currentProcess.remainingTime}) started execution at time ${this.time}`);
+            logger.debug(`Process ${this.currentProcess.name} (priority: ${this.currentProcess.priority}) started execution at time ${this.time}`);
           }
         }
       }
