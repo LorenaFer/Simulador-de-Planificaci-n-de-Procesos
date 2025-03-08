@@ -1,36 +1,42 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
-import { cors } from 'hono/cors';
-import { Context } from 'hono';
 import apiRouter from './routes/api.routes.js';
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import { corsMiddleware } from './middlewares/cors.middleware.js';
+import appLogger from '../utils/logger.js';
 
 /**
  * Create and configure the Hono app
  */
-export const createApp = () => {
+export default function createApp() {
   const app = new Hono();
   
-  // Add global middlewares
+  // Global middleware
   app.use('*', honoLogger());
-  app.use('*', cors());
+  app.use('*', corsMiddleware);
   
-  // Mount API routes
+  // API routes
   app.route('/api', apiRouter);
   
-  // Default 404 handler
-  app.notFound((c: Context) => {
+  // Default route
+  app.get('/', (c) => {
+    return c.json({
+      message: 'Process Scheduler API',
+      documentation: '/api/docs',
+      version: '1.0.0',
+    });
+  });
+  
+  // Not found handler
+  app.notFound((c) => {
     return c.json({
       status: 'error',
       message: 'Not Found',
-      path: c.req.path,
     }, 404);
   });
   
-  // Default error handler
-  app.onError((err: Error, c: Context) => {
-    logger.error('Unhandled error', err);
+  // Error handler
+  app.onError((err, c) => {
+    appLogger.error('Unhandled error', err);
     return c.json({
       status: 'error',
       message: 'Internal Server Error',
@@ -38,6 +44,4 @@ export const createApp = () => {
   });
   
   return app;
-};
-
-export default createApp; 
+} 

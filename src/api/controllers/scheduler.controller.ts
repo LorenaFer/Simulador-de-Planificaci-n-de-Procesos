@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import logger from '../../utils/logger.js';
-import { Process } from '../../simulation/models/process.model.js';
+import { Process, ProcessState } from '../../simulation/models/process.model.js';
 import { SchedulerFactory, SchedulerType } from '../../simulation/algorithms/scheduler.factory.js';
 
 /**
@@ -45,8 +45,24 @@ export const runSimulation = async (c: Context) => {
     );
     
     const result = scheduler.runSimulation();
+    const totalTime = scheduler.getCurrentTime();
     
-    // Return the simulation results
+    // Calculate statistics
+    const totalBurstTime = result.reduce((sum, p) => sum + p.burstTime, 0);
+    const avgWaitingTime = result.reduce((sum, p) => sum + p.waitingTime, 0) / result.length;
+    const avgTurnaroundTime = result.reduce((sum, p) => sum + p.turnaroundTime, 0) / result.length;
+    const avgResponseTime = result.reduce((sum, p) => sum + (p.responseTime || 0), 0) / result.length;
+    const cpuUtilization = (totalBurstTime / totalTime) * 100;
+    
+    // Group processes by arrival time to calculate arrival rate
+    const processArrivals: Record<number, number> = {};
+    processes.forEach(p => {
+      processArrivals[p.arrivalTime] = (processArrivals[p.arrivalTime] || 0) + 1;
+    });
+    
+    const avgArrivalsPerStep = processes.length / (Math.max(...Object.keys(processArrivals).map(Number)) + 1);
+    
+    // Return the simulation results with enhanced statistics
     return c.json({
       status: 'success',
       algorithm: algorithmType,
@@ -61,7 +77,16 @@ export const runSimulation = async (c: Context) => {
         responseTime: p.responseTime,
         completionTime: p.completionTime,
       })),
-      totalTime: scheduler.getCurrentTime(),
+      statistics: {
+        totalProcesses: result.length,
+        totalTime,
+        cpuUtilization: cpuUtilization.toFixed(2),
+        avgWaitingTime: avgWaitingTime.toFixed(2),
+        avgTurnaroundTime: avgTurnaroundTime.toFixed(2),
+        avgResponseTime: avgResponseTime.toFixed(2),
+        avgArrivalsPerStep: avgArrivalsPerStep.toFixed(2),
+        throughput: (result.length / totalTime).toFixed(2),
+      }
     }, 200);
   } catch (error: unknown) {
     logger.error('Error running simulation', error instanceof Error ? error : new Error(String(error)));

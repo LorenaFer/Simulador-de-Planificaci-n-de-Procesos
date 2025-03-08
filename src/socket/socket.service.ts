@@ -230,9 +230,35 @@ export class SocketService {
    * @param scheduler Scheduler instance
    */
   private emitSimulationState(socket: any, scheduler: any): void {
+    const allProcesses = scheduler.getAllProcesses();
+    
+    // Group processes by state
+    const processesByState = {
+      [ProcessState.NEW]: allProcesses.filter((p: Process) => p.state === ProcessState.NEW),
+      [ProcessState.READY]: allProcesses.filter((p: Process) => p.state === ProcessState.READY),
+      [ProcessState.RUNNING]: allProcesses.filter((p: Process) => p.state === ProcessState.RUNNING),
+      [ProcessState.WAITING]: allProcesses.filter((p: Process) => p.state === ProcessState.WAITING),
+      [ProcessState.TERMINATED]: allProcesses.filter((p: Process) => p.state === ProcessState.TERMINATED)
+    };
+    
+    // Calculate real-time statistics
+    const completedProcesses = processesByState[ProcessState.TERMINATED];
+    const currentTime = scheduler.getCurrentTime();
+    
+    let cpuUtilization = 0;
+    let avgWaitingTime = 0;
+    let avgTurnaroundTime = 0;
+    
+    if (completedProcesses.length > 0) {
+      const totalBurstTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.burstTime, 0);
+      cpuUtilization = (totalBurstTime / currentTime) * 100;
+      avgWaitingTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.waitingTime, 0) / completedProcesses.length;
+      avgTurnaroundTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.turnaroundTime, 0) / completedProcesses.length;
+    }
+    
     socket.emit(SocketEvents.SIMULATION_STEP, {
-      currentTime: scheduler.getCurrentTime(),
-      processes: scheduler.getAllProcesses().map((p: Process) => ({
+      currentTime: currentTime,
+      processes: allProcesses.map((p: Process) => ({
         id: p.id,
         name: p.name,
         state: p.state,
@@ -242,6 +268,30 @@ export class SocketService {
         remainingTime: p.remainingTime,
         waitingTime: p.waitingTime,
       })),
+      queues: {
+        newProcesses: processesByState[ProcessState.NEW].length,
+        readyQueue: processesByState[ProcessState.READY].map((p: Process) => ({
+          id: p.id,
+          name: p.name,
+          remainingTime: p.remainingTime,
+          priority: p.priority
+        })),
+        runningProcess: processesByState[ProcessState.RUNNING].length > 0 
+          ? processesByState[ProcessState.RUNNING][0] 
+          : null,
+        waitingQueue: processesByState[ProcessState.WAITING].length,
+        completedProcesses: processesByState[ProcessState.TERMINATED].length
+      },
+      statistics: {
+        cpuUtilization: cpuUtilization.toFixed(2),
+        avgWaitingTime: avgWaitingTime.toFixed(2),
+        avgTurnaroundTime: avgTurnaroundTime.toFixed(2),
+        totalProcesses: allProcesses.length,
+        completedProcesses: completedProcesses.length,
+        throughput: completedProcesses.length > 0 
+          ? (completedProcesses.length / currentTime).toFixed(2) 
+          : "0.00"
+      }
     });
   }
   
