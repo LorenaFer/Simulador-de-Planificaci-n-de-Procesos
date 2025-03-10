@@ -110,6 +110,25 @@ export class SocketService {
             if (isCompleted) {
               clearInterval(intervalId);
               this.simulations.delete(clientId);
+              
+              // Calculate final statistics
+              const allProcesses = simulation.scheduler.getAllProcesses();
+              const completedProcesses = allProcesses.filter((p: Process) => p.state === ProcessState.TERMINATED);
+              const currentTime = simulation.scheduler.getCurrentTime();
+              
+              let cpuUtilization = 0;
+              let avgWaitingTime = 0;
+              let avgTurnaroundTime = 0;
+              let avgResponseTime = 0;
+              
+              if (completedProcesses.length > 0) {
+                const totalBurstTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.burstTime, 0);
+                cpuUtilization = (totalBurstTime / currentTime) * 100;
+                avgWaitingTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.waitingTime, 0) / completedProcesses.length;
+                avgTurnaroundTime = completedProcesses.reduce((sum: number, p: Process) => sum + p.turnaroundTime, 0) / completedProcesses.length;
+                avgResponseTime = completedProcesses.reduce((sum: number, p: Process) => sum + (p.responseTime || 0), 0) / completedProcesses.length;
+              }
+              
               socket.emit(SocketEvents.SIMULATION_COMPLETED, {
                 message: 'Simulation completed',
                 results: simulation.scheduler.getAllProcesses().map((p: Process) => ({
@@ -124,7 +143,18 @@ export class SocketService {
                   responseTime: p.responseTime,
                   completionTime: p.completionTime,
                 })),
-                totalTime: simulation.scheduler.getCurrentTime(),
+                totalTime: currentTime,
+                statistics: {
+                  cpuUtilization: cpuUtilization.toFixed(2),
+                  avgWaitingTime: avgWaitingTime.toFixed(2),
+                  avgTurnaroundTime: avgTurnaroundTime.toFixed(2),
+                  avgResponseTime: avgResponseTime.toFixed(2),
+                  totalProcesses: allProcesses.length,
+                  completedProcesses: completedProcesses.length,
+                  throughput: completedProcesses.length > 0 
+                    ? (completedProcesses.length / currentTime).toFixed(2) 
+                    : "0.00"
+                }
               });
             }
           }, stepInterval);

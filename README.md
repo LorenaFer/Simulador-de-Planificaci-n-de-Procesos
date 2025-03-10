@@ -28,6 +28,8 @@ El simulador incluye los siguientes algoritmos de planificación:
 - **SRTF (Shortest Remaining Time First)**: Versión apropiativa de SJF.
 - **Round Robin**: Asigna un quantum de tiempo a cada proceso en forma circular.
 - **Prioridad**: Planifica según valores de prioridad asignados a cada proceso.
+- **Prioridad Apropiativa**: Versión apropiativa del algoritmo de Prioridad.
+- **Random**: Selecciona procesos aleatoriamente de la cola de listos.
 
 ## Estructura del Proyecto
 
@@ -91,33 +93,80 @@ pnpm start
 ### Endpoints Públicos
 
 - `GET /api/health`: Verificar el estado del servicio
+- `GET /api/scheduler/algorithms`: Obtener lista de algoritmos disponibles
+- `GET /api/algorithms/descriptions`: Obtener descripciones detalladas de los algoritmos
+- `GET /api/processes/random`: Generar procesos aleatorios
+- `GET /api/processes/parameters`: Obtener información sobre los parámetros de los procesos
+- `POST /api/scheduler/simulate`: Ejecutar una simulación con los procesos y algoritmo especificados
 
 ### Endpoints Protegidos (requieren API Key)
 
 - `GET /api/health/secure`: Verificar el estado del servicio (protegido)
-- `POST /api/simulation/create`: Crear una nueva simulación
-- `POST /api/simulation/:id/run`: Ejecutar una simulación
-- `GET /api/simulation/:id/status`: Obtener el estado actual de una simulación
-- `GET /api/simulation/:id/results`: Obtener los resultados de una simulación
 
 Para acceder a los endpoints protegidos, incluye el header `X-API-Key` con el valor configurado.
 
 ## Ejemplo de Uso
 
 ```bash
-# Crear una nueva simulación con FCFS
-curl -X POST http://localhost:3000/api/simulation/create \
-  -H "X-API-Key: tu-api-key" \
+# Ejecutar una simulación con SJF
+curl -X POST http://localhost:8000/api/scheduler/simulate \
   -H "Content-Type: application/json" \
   -d '{
-    "algorithm": "fcfs",
+    "algorithm": "SJF",
     "processes": [
-      {"name": "P1", "arrivalTime": 0, "burstTime": 5},
-      {"name": "P2", "arrivalTime": 1, "burstTime": 3},
-      {"name": "P3", "arrivalTime": 2, "burstTime": 8}
+      {"name": "P1", "arrivalTime": 0, "burstTime": 5, "priority": 3},
+      {"name": "P2", "arrivalTime": 1, "burstTime": 3, "priority": 1},
+      {"name": "P3", "arrivalTime": 2, "burstTime": 8, "priority": 2}
     ]
   }'
 ```
+
+## Despliegue en Railway
+
+Este proyecto está configurado para ser fácilmente desplegado en [Railway](https://railway.app/).
+
+### Requisitos Previos
+
+1. Cuenta en Railway
+2. CLI de Railway instalado (opcional, para despliegue local)
+
+### Pasos para el Despliegue
+
+1. **Desde GitHub:**
+   - Crea un nuevo proyecto en Railway
+   - Selecciona "Deploy from GitHub repo"
+   - Conecta tu repositorio de GitHub
+   - Railway detectará automáticamente la configuración del proyecto
+
+2. **Desde CLI:**
+   ```bash
+   # Iniciar sesión en Railway
+   railway login
+
+   # Inicializar proyecto en el directorio actual
+   railway init
+
+   # Desplegar la aplicación
+   railway up
+   ```
+
+3. **Configurar Variables de Entorno:**
+   - En el dashboard de Railway, ve a la pestaña "Variables"
+   - Agrega las variables de entorno requeridas:
+     - `PORT`: 8000 (o el que prefieras, Railway lo asignará automáticamente)
+     - `NODE_ENV`: production
+     - `LOG_LEVEL`: info
+     - `API_KEY`: tu-api-key-secreta
+
+4. **Verificar el Despliegue:**
+   - Railway generará una URL para tu aplicación
+   - Prueba la API con una solicitud a `https://tu-app.railway.app/api/health`
+
+### Consideraciones Adicionales
+
+- Railway redesplegará automáticamente tu aplicación cuando haya cambios en la rama principal
+- Puedes configurar dominios personalizados desde el panel de Railway
+- La aplicación se escala automáticamente según las necesidades
 
 ## Contribución
 
