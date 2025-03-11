@@ -13,6 +13,19 @@ const httpServer = createServer();
 
 // Setup route handler for the HTTP server
 httpServer.on('request', async (req, res) => {
+  // Add CORS headers directly to all responses
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle OPTIONS preflight requests directly
+  if (req.method === 'OPTIONS') {
+    res.statusCode = 204;
+    res.end();
+    return;
+  }
+
   // Convert Node.js request to fetch Request
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
   
@@ -68,7 +81,7 @@ const socketService = new SocketService(httpServer);
 // Start the server
 const port = config.server.port;
 
-httpServer.listen(port, () => {
+httpServer.listen(port, '0.0.0.0', () => {
   logger.info(`Server is running on http://localhost:${port}`);
   logger.info(`Environment: ${config.env.NODE_ENV}`);
   logger.info('WebSocket server initialized');

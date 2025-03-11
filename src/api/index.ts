@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { logger as honoLogger } from 'hono/logger';
 import apiRouter from './routes/api.routes.js';
-import { corsMiddleware } from './middlewares/cors.middleware.js';
 import appLogger from '../utils/logger.js';
 
 /**
@@ -12,7 +11,6 @@ export default function createApp() {
   
   // Global middleware
   app.use('*', honoLogger());
-  app.use('*', corsMiddleware);
   
   // API routes
   app.route('/api', apiRouter);
