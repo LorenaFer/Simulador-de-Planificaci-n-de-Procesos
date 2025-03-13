@@ -32,7 +32,7 @@ export class FCFSScheduler extends BaseScheduler {
     if (!this.currentProcess && this.readyQueue.length > 0) {
       this.currentProcess = this.readyQueue.shift() || null;
       if (this.currentProcess) {
-        this.currentProcess.updateState(ProcessState.RUNNING);
+        this.currentProcess.updateState(ProcessState.RUNNING, this.time);
         logger.debug(`Process ${this.currentProcess.name} started execution at time ${this.time}`);
       }
     }
@@ -56,7 +56,7 @@ export class FCFSScheduler extends BaseScheduler {
         if (this.readyQueue.length > 0) {
           this.currentProcess = this.readyQueue.shift() || null;
           if (this.currentProcess) {
-            this.currentProcess.updateState(ProcessState.RUNNING);
+            this.currentProcess.updateState(ProcessState.RUNNING, this.time);
             logger.debug(`Process ${this.currentProcess.name} started execution at time ${this.time}`);
           }
         }

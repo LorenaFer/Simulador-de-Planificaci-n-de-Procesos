@@ -48,6 +48,7 @@ export class Process {
   responseTime: number | null;
   completionTime: number | null;
   firstRun: boolean;
+  runningTimestamps: number[]; // Track timestamps when process enters running state
   
   constructor(config: ProcessConfig) {
     this.id = generateId();
@@ -64,12 +65,18 @@ export class Process {
     this.responseTime = null;
     this.completionTime = null;
     this.firstRun = true;
+    this.runningTimestamps = [];
   }
   
   /**
    * Update the process state
    */
-  updateState(newState: ProcessState): void {
+  updateState(newState: ProcessState, currentTime?: number): void {
+    // If process is entering running state, record the timestamp
+    if (newState === ProcessState.RUNNING && this.state !== ProcessState.RUNNING && currentTime !== undefined) {
+      this.runningTimestamps.push(currentTime);
+    }
+    
     this.state = newState;
   }
   
@@ -141,6 +148,7 @@ export class Process {
     clone.responseTime = this.responseTime;
     clone.completionTime = this.completionTime;
     clone.firstRun = this.firstRun;
+    clone.runningTimestamps = [...this.runningTimestamps];
     
     return clone;
   }
@@ -161,6 +169,7 @@ export class Process {
       turnaroundTime: this.turnaroundTime,
       responseTime: this.responseTime,
       completionTime: this.completionTime,
+      runningTimestamps: this.runningTimestamps,
     };
   }
 } 

@@ -40,7 +40,7 @@ export class RoundRobinScheduler extends BaseScheduler {
       this.currentProcess = this.readyQueue.shift() || null;
       
       if (this.currentProcess) {
-        this.currentProcess.updateState(ProcessState.RUNNING);
+        this.currentProcess.updateState(ProcessState.RUNNING, this.time);
         this.timeSliceRemaining = this.timeQuantum;
         logger.debug(`Process ${this.currentProcess.name} started execution at time ${this.time}, time quantum: ${this.timeQuantum}`);
       }
@@ -70,7 +70,7 @@ export class RoundRobinScheduler extends BaseScheduler {
           this.currentProcess = this.readyQueue.shift() || null;
           
           if (this.currentProcess) {
-            this.currentProcess.updateState(ProcessState.RUNNING);
+            this.currentProcess.updateState(ProcessState.RUNNING, this.time);
             this.timeSliceRemaining = this.timeQuantum;
             logger.debug(`Process ${this.currentProcess.name} started execution at time ${this.time}, time quantum: ${this.timeQuantum}`);
           }
@@ -80,7 +80,7 @@ export class RoundRobinScheduler extends BaseScheduler {
         logger.debug(`Process ${this.currentProcess.name} time quantum expired at time ${this.time}`);
         
         // Change state back to READY
-        this.currentProcess.updateState(ProcessState.READY);
+        this.currentProcess.updateState(ProcessState.READY, this.time);
         
         // If there are other processes waiting, add current process to the back of the queue
         if (this.readyQueue.length > 0) {
@@ -88,7 +88,7 @@ export class RoundRobinScheduler extends BaseScheduler {
           this.currentProcess = this.readyQueue.shift() || null;
           
           if (this.currentProcess) {
-            this.currentProcess.updateState(ProcessState.RUNNING);
+            this.currentProcess.updateState(ProcessState.RUNNING, this.time);
             this.timeSliceRemaining = this.timeQuantum;
             logger.debug(`Process ${this.currentProcess.name} started execution at time ${this.time}, time quantum: ${this.timeQuantum}`);
           }

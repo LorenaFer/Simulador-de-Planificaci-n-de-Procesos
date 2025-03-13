@@ -41,7 +41,7 @@ export abstract class BaseScheduler implements SchedulerInterface {
         process.state === ProcessState.NEW && 
         process.arrivalTime <= this.time
       ) {
-        process.updateState(ProcessState.READY);
+        process.updateState(ProcessState.READY, this.time);
         this.readyQueue.push(process);
         logger.debug(`Process ${process.name} arrived at time ${this.time}`);
       }

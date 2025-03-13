@@ -53,7 +53,7 @@ export class SJFScheduler extends BaseScheduler {
       // Select the process with shortest burst time
       this.currentProcess = this.readyQueue.shift() || null;
       if (this.currentProcess) {
-        this.currentProcess.updateState(ProcessState.RUNNING);
+        this.currentProcess.updateState(ProcessState.RUNNING, this.time);
         logger.debug(`Process ${this.currentProcess.name} (burst time: ${this.currentProcess.remainingTime}) started execution at time ${this.time}`);
       }
     }
@@ -80,7 +80,7 @@ export class SJFScheduler extends BaseScheduler {
           
           this.currentProcess = this.readyQueue.shift() || null;
           if (this.currentProcess) {
-            this.currentProcess.updateState(ProcessState.RUNNING);
+            this.currentProcess.updateState(ProcessState.RUNNING, this.time);
             logger.debug(`Process ${this.currentProcess.name} (burst time: ${this.currentProcess.remainingTime}) started execution at time ${this.time}`);
           }
         }
