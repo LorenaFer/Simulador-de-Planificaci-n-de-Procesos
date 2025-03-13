@@ -14,7 +14,13 @@ const httpServer = createServer();
 // Setup route handler for the HTTP server
 httpServer.on('request', async (req, res) => {
   // Add CORS headers directly to all responses
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+  // In production, allow requests from the specific frontend URL or dynamic origin as fallback
+  const productionFrontendUrl = 'https://frontend-os-iota.vercel.app';
+  const allowedOrigin = config.env.NODE_ENV === 'production' 
+    ? (req.headers.origin === productionFrontendUrl ? productionFrontendUrl : req.headers.origin || '*')
+    : 'http://localhost:3000';
+    
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
   res.setHeader('Access-Control-Allow-Credentials', 'true');

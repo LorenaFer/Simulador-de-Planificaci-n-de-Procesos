@@ -157,6 +157,7 @@ Este proyecto está configurado para ser fácilmente desplegado en [Railway](htt
      - `NODE_ENV`: production
      - `LOG_LEVEL`: info
      - `API_KEY`: tu-api-key-secreta
+     - `FRONTEND_URL`: https://frontend-os-iota.vercel.app (actualiza esta URL si tu frontend está en otra dirección)
 
 4. **Verificar el Despliegue:**
    - Railway generará una URL para tu aplicación
